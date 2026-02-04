@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NimeStream 2026</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo" onclick="app.loadHome()">Nime<span>Stream</span></div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Cari anime...">
+            <button onclick="app.handleSearch()"><i class="ri-search-line"></i></button>
+        </div>
+    </nav>
+
+    <main id="app">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+        </div>
+    </main>
+
+    <div id="videoModal" class="video-modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Streaming</h3>
+                <button onclick="app.closeModal()"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="video-wrapper">
+                <iframe id="videoPlayer" src="" frameborder="0" allowfullscreen></iframe>
+            </div>
+            <div class="server-list" id="serverList">
+                </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
