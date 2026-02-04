@@ -1,8 +1,8 @@
 const API_URL = '/api';
 
 const app = {
-    currentAnimeEpisodes: [], // Menyimpan list episode saat ini
-    currentEpisodeIndex: -1, // Menyimpan posisi episode yang sedang ditonton
+    currentAnimeEpisodes: [], 
+    currentEpisodeIndex: -1, 
 
     init: () => {
         app.loadHome();
@@ -89,7 +89,7 @@ const app = {
         const data = await app.fetchData({ action: 'detail', url });
         if (!data) return;
 
-        // Simpan data episode ke memory untuk navigasi next/prev
+        // Simpan episode untuk navigasi
         app.currentAnimeEpisodes = data.episodes; 
 
         let html = `
@@ -104,7 +104,7 @@ const app = {
             
             <div class="ep-header">
                 <h2 class="section-title" style="margin:0">List Episode</h2>
-                <span style="font-size:0.8rem; color:var(--text-secondary)">Total: ${data.episodes.length} Eps</span>
+                <span style="font-size:0.8rem; color:var(--text-secondary)">Total: ${data.episodes.length}</span>
             </div>
             
             <div class="episode-container">
@@ -128,7 +128,7 @@ const app = {
         
         modal.classList.remove('hidden');
         document.getElementById('modalTitle').innerText = 'Memuat Video...';
-        serverList.innerHTML = '<span class="loading-text">Mencari server terbaik...</span>';
+        serverList.innerHTML = '<span style="color:var(--accent)">Mencari server...</span>';
         player.src = ''; 
         document.getElementById('navControls').style.display = 'none';
 
@@ -137,7 +137,7 @@ const app = {
         if (data && data.streamingServers.length > 0) {
             document.getElementById('modalTitle').innerText = data.title;
             
-            // Generate Server Buttons
+            // Buttons Server
             let serverHtml = '';
             data.streamingServers.forEach((srv, idx) => {
                 serverHtml += `<button class="server-btn ${idx === 0 ? 'active' : ''}" onclick="app.changeServer(this, '${srv.link}')">${srv.server}</button>`;
@@ -147,45 +147,39 @@ const app = {
             // Auto play
             player.src = data.streamingServers[0].link;
             
-            // Show Navigation
+            // Update tombol Next/Prev
             app.updateNavButtons();
         } else {
-            serverList.innerHTML = 'Maaf, link stream belum tersedia.';
+            serverList.innerHTML = 'Link stream belum tersedia.';
         }
     },
 
     updateNavButtons: () => {
-        const navDiv = document.getElementById('navControls');
-        navDiv.style.display = 'flex';
+        document.getElementById('navControls').style.display = 'flex';
         
-        // Logika Index: Array[0] biasanya episode terbaru (jika urutan desc)
-        // Cek struktur array kamu. Jika [Ep 10, Ep 9, ...], maka Next adalah index - 1
-        // Jika [Ep 1, Ep 2, ...], maka Next adalah index + 1
-        // Disini kita asumsikan urutan dari Scraper (biasanya Newest -> Oldest)
-        
-        const hasNext = app.currentEpisodeIndex > 0; // Menuju episode lebih baru/lama tergantung sort
-        const hasPrev = app.currentEpisodeIndex < app.currentAnimeEpisodes.length - 1;
-
-        // Custom logic tombol berdasarkan urutan array visual user
-        // Tombol "Next Ep" akan memuat episode index-1 (karena biasanya list episode animekompi itu descending)
-        // Sesuaikan jika scraper kamu sudah di reverse.
+        // Logika: Biasanya array episode itu [Ep 10, Ep 9, ... Ep 1] (Descending)
+        // Jadi "Next Episode" (Ep 11) adalah index - 1 (ke arah atas array)
+        // "Prev Episode" (Ep 9) adalah index + 1 (ke arah bawah array)
+        // TERGANTUNG urutan dari web sumbernya.
         
         const btnPrev = document.getElementById('btnPrev');
         const btnNext = document.getElementById('btnNext');
 
-        btnPrev.onclick = () => {
-             if(hasPrev) app.loadStream(app.currentAnimeEpisodes[app.currentEpisodeIndex + 1].url, app.currentEpisodeIndex + 1);
+        // Cek bounds
+        const canGoNext = app.currentEpisodeIndex > 0; 
+        const canGoPrev = app.currentEpisodeIndex < app.currentAnimeEpisodes.length - 1;
+
+        // Kita asumsi urutan Descending (Newest first) seperti standar web anime
+        btnNext.onclick = () => {
+             if(canGoNext) app.loadStream(app.currentAnimeEpisodes[app.currentEpisodeIndex - 1].url, app.currentEpisodeIndex - 1);
         };
         
-        btnNext.onclick = () => {
-             if(hasNext) app.loadStream(app.currentAnimeEpisodes[app.currentEpisodeIndex - 1].url, app.currentEpisodeIndex - 1);
+        btnPrev.onclick = () => {
+             if(canGoPrev) app.loadStream(app.currentAnimeEpisodes[app.currentEpisodeIndex + 1].url, app.currentEpisodeIndex + 1);
         };
 
-        // Styling disable
-        btnPrev.disabled = !hasPrev;
-        btnNext.disabled = !hasNext;
-        btnPrev.style.opacity = hasPrev ? 1 : 0.3;
-        btnNext.style.opacity = hasNext ? 1 : 0.3;
+        btnNext.disabled = !canGoNext;
+        btnPrev.disabled = !canGoPrev;
     },
 
     changeServer: (btn, link) => {
