@@ -1,9 +1,11 @@
 const API_URL = '/api';
 
 const app = {
+    currentAnimeEpisodes: [], // Menyimpan list episode saat ini
+    currentEpisodeIndex: -1, // Menyimpan posisi episode yang sedang ditonton
+
     init: () => {
         app.loadHome();
-        // Enter key di search
         document.getElementById('searchInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') app.handleSearch();
         });
@@ -22,7 +24,6 @@ const app = {
             return await res.json();
         } catch (err) {
             console.error(err);
-            alert('Gagal memuat data. Silakan coba lagi.');
             return null;
         }
     },
@@ -33,8 +34,6 @@ const app = {
         if (!data) return;
 
         let html = '';
-
-        // Slider Section
         if (data.slide && data.slide.length > 0) {
             html += `<h2 class="section-title">Trending</h2><div class="hero-slider">`;
             data.slide.forEach(item => {
@@ -50,28 +49,24 @@ const app = {
             html += `</div>`;
         }
 
-        // Terbaru
         html += `<h2 class="section-title">Rilisan Terbaru</h2><div class="anime-grid">`;
         data.rilisanTerbaru.forEach(item => {
             html += app.createCard(item);
         });
         html += `</div>`;
-
         document.getElementById('app').innerHTML = html;
     },
 
     handleSearch: async () => {
         const query = document.getElementById('searchInput').value;
         if (!query) return;
-        
         app.setLoading(true);
         const data = await app.fetchData({ action: 'search', q: query });
-        
-        let html = `<h2 class="section-title">Hasil Pencarian: ${query}</h2><div class="anime-grid">`;
+        let html = `<h2 class="section-title">Hasil: ${query}</h2><div class="anime-grid">`;
         if (data && data.length > 0) {
             data.forEach(item => html += app.createCard(item));
         } else {
-            html += `<p>Tidak ditemukan.</p>`;
+            html += `<p style="padding:20px; color:gray">Tidak ditemukan.</p>`;
         }
         html += `</div>`;
         document.getElementById('app').innerHTML = html;
@@ -94,40 +89,48 @@ const app = {
         const data = await app.fetchData({ action: 'detail', url });
         if (!data) return;
 
+        // Simpan data episode ke memory untuk navigasi next/prev
+        app.currentAnimeEpisodes = data.episodes; 
+
         let html = `
             <div class="detail-header">
                 <img src="${data.imageUrl}" class="detail-poster" referrerpolicy="no-referrer">
                 <div class="detail-info">
                     <h1>${data.title}</h1>
                     <p style="color:var(--text-secondary); margin-bottom:10px;">${data.status} • ${data.studio}</p>
-                    <p>${data.description.substring(0, 300)}...</p>
+                    <p class="desc">${data.description}</p>
                 </div>
             </div>
             
-            <h2 class="section-title">Episode</h2>
-            <div class="episode-list">
+            <div class="ep-header">
+                <h2 class="section-title" style="margin:0">List Episode</h2>
+                <span style="font-size:0.8rem; color:var(--text-secondary)">Total: ${data.episodes.length} Eps</span>
+            </div>
+            
+            <div class="episode-container">
+                <div class="episode-grid">
         `;
 
-        // Sort episode agar yang terbaru di atas atau diurutkan sesuai selera
-        data.episodes.forEach(ep => {
-            html += `<div class="ep-btn" onclick="app.loadStream('${ep.url}')">${ep.number}</div>`;
+        data.episodes.forEach((ep, index) => {
+            html += `<div class="ep-box" onclick="app.loadStream('${ep.url}', ${index})">${ep.number}</div>`;
         });
 
-        html += `</div>`;
+        html += `</div></div>`;
         document.getElementById('app').innerHTML = html;
         window.scrollTo(0, 0);
     },
 
-    loadStream: async (url) => {
-        // Tampilkan loading di modal
+    loadStream: async (url, index) => {
+        app.currentEpisodeIndex = index;
         const modal = document.getElementById('videoModal');
         const player = document.getElementById('videoPlayer');
         const serverList = document.getElementById('serverList');
         
         modal.classList.remove('hidden');
-        document.getElementById('modalTitle').innerText = 'Memuat Player...';
-        serverList.innerHTML = '<span style="color:white">Mengambil link stream...</span>';
-        player.src = ''; // reset
+        document.getElementById('modalTitle').innerText = 'Memuat Video...';
+        serverList.innerHTML = '<span class="loading-text">Mencari server terbaik...</span>';
+        player.src = ''; 
+        document.getElementById('navControls').style.display = 'none';
 
         const data = await app.fetchData({ action: 'stream', url });
         
@@ -136,16 +139,53 @@ const app = {
             
             // Generate Server Buttons
             let serverHtml = '';
-            data.streamingServers.forEach((srv, index) => {
-                serverHtml += `<button class="server-btn ${index === 0 ? 'active' : ''}" onclick="app.changeServer(this, '${srv.link}')">${srv.server}</button>`;
+            data.streamingServers.forEach((srv, idx) => {
+                serverHtml += `<button class="server-btn ${idx === 0 ? 'active' : ''}" onclick="app.changeServer(this, '${srv.link}')">${srv.server}</button>`;
             });
             serverList.innerHTML = serverHtml;
 
-            // Auto play first server
+            // Auto play
             player.src = data.streamingServers[0].link;
+            
+            // Show Navigation
+            app.updateNavButtons();
         } else {
-            serverList.innerHTML = 'Tidak ada stream yang tersedia.';
+            serverList.innerHTML = 'Maaf, link stream belum tersedia.';
         }
+    },
+
+    updateNavButtons: () => {
+        const navDiv = document.getElementById('navControls');
+        navDiv.style.display = 'flex';
+        
+        // Logika Index: Array[0] biasanya episode terbaru (jika urutan desc)
+        // Cek struktur array kamu. Jika [Ep 10, Ep 9, ...], maka Next adalah index - 1
+        // Jika [Ep 1, Ep 2, ...], maka Next adalah index + 1
+        // Disini kita asumsikan urutan dari Scraper (biasanya Newest -> Oldest)
+        
+        const hasNext = app.currentEpisodeIndex > 0; // Menuju episode lebih baru/lama tergantung sort
+        const hasPrev = app.currentEpisodeIndex < app.currentAnimeEpisodes.length - 1;
+
+        // Custom logic tombol berdasarkan urutan array visual user
+        // Tombol "Next Ep" akan memuat episode index-1 (karena biasanya list episode animekompi itu descending)
+        // Sesuaikan jika scraper kamu sudah di reverse.
+        
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+
+        btnPrev.onclick = () => {
+             if(hasPrev) app.loadStream(app.currentAnimeEpisodes[app.currentEpisodeIndex + 1].url, app.currentEpisodeIndex + 1);
+        };
+        
+        btnNext.onclick = () => {
+             if(hasNext) app.loadStream(app.currentAnimeEpisodes[app.currentEpisodeIndex - 1].url, app.currentEpisodeIndex - 1);
+        };
+
+        // Styling disable
+        btnPrev.disabled = !hasPrev;
+        btnNext.disabled = !hasNext;
+        btnPrev.style.opacity = hasPrev ? 1 : 0.3;
+        btnNext.style.opacity = hasNext ? 1 : 0.3;
     },
 
     changeServer: (btn, link) => {
@@ -156,9 +196,8 @@ const app = {
 
     closeModal: () => {
         document.getElementById('videoModal').classList.add('hidden');
-        document.getElementById('videoPlayer').src = ''; // stop video
+        document.getElementById('videoPlayer').src = '';
     }
 };
 
-// Start App
 app.init();
