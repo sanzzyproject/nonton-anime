@@ -28,13 +28,21 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modalTitle">Streaming</h3>
-                <button onclick="app.closeModal()"><i class="ri-close-line"></i></button>
+                <button onclick="app.closeModal()" class="close-btn"><i class="ri-close-line"></i></button>
             </div>
+            
             <div class="video-wrapper">
-                <iframe id="videoPlayer" src="" frameborder="0" allowfullscreen></iframe>
+                <iframe id="videoPlayer" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
             </div>
-            <div class="server-list" id="serverList">
+
+            <div class="player-controls">
+                <div class="server-list" id="serverList"></div>
+                
+                <div class="nav-controls" id="navControls" style="display:none;">
+                    <button class="nav-btn" id="btnPrev"><i class="ri-skip-back-line"></i> Eps Lalu</button>
+                    <button class="nav-btn" id="btnNext">Eps Lanjut <i class="ri-skip-forward-line"></i></button>
                 </div>
+            </div>
         </div>
     </div>
 
